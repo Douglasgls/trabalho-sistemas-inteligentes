@@ -192,6 +192,26 @@ function jogar() {
         `Posição atual: [${robo.linha}, ${robo.coluna}]`
       );
 
+      // Verifica se pegou a peça
+      if (
+        missao.peca &&
+        !robo.temPeca &&
+        robo.linha === missao.peca[0] &&
+        robo.coluna === missao.peca[1]
+      ) {
+        robo.coletarPeca();
+        console.log("\nPEÇA COLETADA! A SAÍDA FOI LIBERADA!");
+      }
+
+      // Alerta se pisar na saída sem a peça
+      if (
+        robo.linha === missao.destino[0] &&
+        robo.coluna === missao.destino[1] &&
+        !robo.temPeca
+      ) {
+        console.log("\nSAÍDA BLOQUEADA! Você precisa primeiro buscar a peça [P].");
+      }
+
     }
 
 
@@ -217,7 +237,7 @@ function jogar() {
     ) {
 
       console.log(
-        "\n🎯 MISSÃO CONCLUÍDA!"
+        "\nMISSÃO CONCLUÍDA!"
       );
 
 

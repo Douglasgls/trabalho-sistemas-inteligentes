@@ -6,13 +6,14 @@ O objetivo principal do projeto é demonstrar, na prática, o funcionamento e a 
 
 ## 🎯 Como Funciona
 
-1. **Partida do Jogador:** Ao iniciar a aplicação, o jogador é desafiado a controlar um robô pelo mapa usando as teclas `W`, `A`, `S` e `D`. Cada movimento tem um custo baseado no terreno.
-2. **Conclusão:** Assim que o jogador chega ao destino final, o jogo exibe as estatísticas do jogador (distância percorrida, custo do caminho e número de movimentos).
-3. **Análise da IA:** Após a jogada humana, o sistema executa automaticamente os algoritmos de busca implementados para resolver a mesma missão.
-4. **Comparação:** No final, é exibido um quadro comparativo mostrando a performance do jogador contra as diferentes abordagens da IA, analisando:
+1. **Partida do Robô:** O robô surge no **meio do mapa**. A saída começa desativada e trancada.
+2. **Coleta da Peça:** O jogador (usando as teclas `W`, `A`, `S` e `D`) deve primeiro conduzir o robô até o **topo do mapa** para coletar a peça da missão.
+3. **Liberação da Saída:** Assim que a peça é coletada, a saída é liberada e o robô deve navegar até ela para concluir a missão.
+4. **Análise da IA:** Após a jogada humana, o sistema executa automaticamente os algoritmos de busca (A* e Busca Gulosa com heurísticas de Manhattan e Chebyshev) de forma **composta em duas etapas** (Origem → Peça → Saída).
+5. **Comparação:** É exibido um quadro comparativo mostrando a performance do jogador contra as diferentes abordagens da IA:
    - Distância
-   - Custo total
-   - Quantidade de Nós explorados
+   - Custo total do trajeto
+   - Quantidade de nós explorados
    - Tempo de execução (em ms)
 
 ## 🧠 Algoritmos e Heurísticas Implementadas

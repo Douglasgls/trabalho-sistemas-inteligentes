@@ -158,18 +158,67 @@ function mostrarResultadoBusca(
 
 
 // ==========================================
+// EXECUTA BUSCA COMPOSTA (ORIGEM -> PEÇA -> DESTINO)
+// ==========================================
+
+function executarBuscaComposta(
+  algoritmo,
+  mapa,
+  origem,
+  peca,
+  destino,
+  heuristica
+) {
+
+  if (!peca) {
+    return algoritmo(mapa, origem, destino, heuristica);
+  }
+
+  // Etapa 1: Origem até a Peça
+  const etapa1 = algoritmo(mapa, origem, peca, heuristica);
+
+  // Etapa 2: Peça até o Destino
+  const etapa2 = algoritmo(mapa, peca, destino, heuristica);
+
+  if (etapa1.caminho === null || etapa2.caminho === null) {
+    return {
+      caminho: null,
+      custo: Infinity,
+      distancia: Infinity,
+      nosExplorados: (etapa1.nosExplorados || 0) + (etapa2.nosExplorados || 0)
+    };
+  }
+
+  // Concatena caminhos sem duplicar a posição da peça
+  const caminhoCompleto = [
+    ...etapa1.caminho,
+    ...etapa2.caminho.slice(1)
+  ];
+
+  return {
+    caminho: caminhoCompleto,
+    custo: etapa1.custo + etapa2.custo,
+    distancia: etapa1.distancia + etapa2.distancia,
+    nosExplorados: etapa1.nosExplorados + etapa2.nosExplorados
+  };
+}
+
+
+// ==========================================
 // EXECUTA AS 4 BUSCAS
 // ==========================================
 
 function executarBuscas(
   mapa,
   origem,
+  peca,
   destino
 ) {
 
   console.log("\n");
   console.log("==========================================");
-  console.log("         RESULTADOS DAS BUSCAS");
+  console.log("    RESULTADOS DAS BUSCAS (COMPOSTAS)");
+  console.log("   (Origem -> Peça -> Saída Liberada)");
   console.log("==========================================");
 
 
@@ -178,9 +227,11 @@ function executarBuscas(
   // ========================================
 
   const resultadoGulosaManhattan =
-    buscaGulosa(
+    executarBuscaComposta(
+      buscaGulosa,
       mapa,
       origem,
+      peca,
       destino,
       heuristicaForte
     );
@@ -197,9 +248,11 @@ function executarBuscas(
   // ========================================
 
   const resultadoGulosaChebyshev =
-    buscaGulosa(
+    executarBuscaComposta(
+      buscaGulosa,
       mapa,
       origem,
+      peca,
       destino,
       heuristicaFraca
     );
@@ -216,9 +269,11 @@ function executarBuscas(
   // ========================================
 
   const resultadoAEstrelaManhattan =
-    aEstrela(
+    executarBuscaComposta(
+      aEstrela,
       mapa,
       origem,
+      peca,
       destino,
       heuristicaForte
     );
@@ -235,9 +290,11 @@ function executarBuscas(
   // ========================================
 
   const resultadoAEstrelaChebyshev =
-    aEstrela(
+    executarBuscaComposta(
+      aEstrela,
       mapa,
       origem,
+      peca,
       destino,
       heuristicaFraca
     );
@@ -447,6 +504,29 @@ function jogarNivel(nivel, finalizarNivel) {
             `Posição atual: [${robo.linha}, ${robo.coluna}]`
           );
 
+          // Verifica se coletou a peça
+          if (
+            missao.peca &&
+            !robo.temPeca &&
+            robo.linha === missao.peca[0] &&
+            robo.coluna === missao.peca[1]
+          ) {
+            robo.coletarPeca();
+            console.log("\n==========================================");
+            console.log(" 📦 PEÇA COLETADA! A SAÍDA FOI LIBERADA!");
+            console.log(" Agora vá até a saída [D] para concluir!");
+            console.log("==========================================");
+          }
+
+          // Alerta se pisar na saída sem a peça
+          if (
+            robo.linha === missao.destino[0] &&
+            robo.coluna === missao.destino[1] &&
+            !robo.temPeca
+          ) {
+            console.log("\n⚠️ A SAÍDA ESTÁ BLOQUEADA! Você precisa primeiro buscar a peça [P] no topo.");
+          }
+
         }
 
 
@@ -487,12 +567,13 @@ function jogarNivel(nivel, finalizarNivel) {
 
 
           // =================================
-          // EXECUTA AS 4 BUSCAS
+          // EXECUTA AS 4 BUSCAS (COMPOSTAS)
           // =================================
 
           executarBuscas(
             mapa,
             missao.origem,
+            missao.peca,
             missao.destino
           );
 

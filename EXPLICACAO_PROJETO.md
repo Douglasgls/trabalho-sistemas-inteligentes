@@ -6,10 +6,11 @@
 
 ## 1. O projeto em uma frase
 
-> Um robô precisa levar uma carga de um ponto **A (origem)** até um ponto **B (destino)** num mapa de fábrica em forma de grade. Primeiro **o jogador** tenta fazer o caminho com W/A/S/D; depois **a IA** resolve o mesmo problema com **Busca Gulosa** e **A\***, usando **duas heurísticas diferentes**, e o programa compara os resultados.
+> Um robô nasce no **centro do mapa** e precisa coletar uma peça/carga no **topo do mapa** para só então liberar a **saída (destino)**. Primeiro **o jogador** cumpre a missão manualmente com W/A/S/D; depois **a IA** resolve o mesmo desafio em duas etapas (Origem → Peça → Saída) com **Busca Gulosa** e **A\***, usando **duas heurísticas diferentes**, e o programa compara os resultados de forma justa.
 
 O objetivo didático é mostrar:
 - A diferença entre uma busca **rápida mas "míope"** (Gulosa) e uma busca **ótima** (A\*).
+- O conceito de **planejamento em múltiplos estágios / sub-objetivos (waypoints)** em IA.
 - Como a **qualidade da heurística** muda a quantidade de trabalho (nós explorados).
 
 ---
@@ -300,6 +301,26 @@ sequenceDiagram
 - **Custo**: soma dos custos dos terrenos (é o que realmente importa).
 - **Nós explorados**: quanto "trabalho" o algoritmo fez.
 - **Tempo (ms)**.
+
+---
+
+## 8.1 Modo de Visualização da IA (Exploração Passo a Passo e Logs Matemáticos)
+
+A interface gráfica (Frontend) conta com um **modo de visualização profunda da IA**, onde é possível assistir ao algoritmo tomando decisões em tempo real:
+
+* **Cores no Mapa durante a Animação:**
+  * 🟡 **Amarelo (Fronteira / Abertos):** células que foram identificadas e estão aguardando expansão na lista de prioridade.
+  * 🔴 **Vermelho (Explorados / Fechados):** células que o algoritmo já retirou da fila e expandiu.
+  * 🔵 **Azul (Rota Final):** o caminho ótimo completo após alcançar a meta.
+  * 🟢 **Verde:** o destino da etapa atual (primeiro a Peça no topo à esquerda, depois a Saída).
+  * **Ciano Pulsante:** o nó exato que está sendo avaliado naquele milissegundo.
+
+* **Tabela de Logs e Contas em Tempo Real (à direita do mapa):**
+  * **Cálculo Matemático Explicado:**
+    * Para **A\***: exibe a equação $f(n) = g(n) + h(n)$, mostrando explicitamente o custo acumulado $g$, a heurística estimada $h$ e o total $f$.
+    * Para **Gulosa**: exibe $f(n) = h(n)$, destacando em vermelho que o custo real percorrido $g$ é completamente ignorado.
+  * **Análise dos 4 Vizinhos:** tabela com os blocos ao redor (Cima, Baixo, Esquerda, Direita) contendo suas coordenadas, terrenos, cálculos e a decisão tomada (ex: *"Adicionado à fronteira"*, *"Bloqueado: Barreira"*, *"Caminho já conhecido é melhor"*).
+  * **Controles de Playback:** botões de Play/Pause, avançar/retroceder passo a passo, slider de progresso e ajuste de velocidade (0.5x, 1x, 2.5x).
 
 ---
 

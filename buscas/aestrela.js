@@ -9,7 +9,7 @@ const No = require("../js/no");
 // BUSCA A*
 // ==========================================
 
-function aEstrela(mapa, origem, destino, heuristica) {
+function aEstrela(mapa, origem, destino, heuristica, gravarHistorico = false) {
 
   // Nós que ainda precisam ser analisados
   const abertos = [];
@@ -22,6 +22,9 @@ function aEstrela(mapa, origem, destino, heuristica) {
 
   // Quantidade de nós explorados
   let nosExplorados = 0;
+
+  // Histórico passo a passo (caso solicitado para visualização e logs)
+  const historico = [];
 
 
   // ==========================================
@@ -142,6 +145,26 @@ function aEstrela(mapa, origem, destino, heuristica) {
       const caminho =
         noAtual.obterCaminho();
 
+      if (gravarHistorico) {
+        historico.push({
+          passo: historico.length + 1,
+          tipo: "destino_encontrado",
+          noAtual: {
+            linha: noAtual.linha,
+            coluna: noAtual.coluna,
+            terreno: mapa.matriz[noAtual.linha][noAtual.coluna].tipo,
+            custo: mapa.matriz[noAtual.linha][noAtual.coluna].custo,
+            g: noAtual.custo,
+            h: noAtual.heuristica,
+            f: noAtual.f
+          },
+          motivoEscolha: `Destino [${destino[0]}, ${destino[1]}] alcançado!`,
+          abertos: abertos.map(n => [n.linha, n.coluna]),
+          fechados: Array.from(fechados).map(k => k.split(",").map(Number)),
+          vizinhos: []
+        });
+      }
+
       return {
 
         caminho,
@@ -150,7 +173,9 @@ function aEstrela(mapa, origem, destino, heuristica) {
 
         distancia: caminho.length - 1,
 
-        nosExplorados
+        nosExplorados,
+
+        ...(gravarHistorico ? { historico } : {})
 
       };
 
@@ -163,28 +188,27 @@ function aEstrela(mapa, origem, destino, heuristica) {
 
     const movimentos = [
 
-      [-1, 0], // cima
-      [1, 0],  // baixo
-      [0, -1], // esquerda
-      [0, 1]   // direita
+      { nome: "cima", dL: -1, dC: 0 },
+      { nome: "baixo", dL: 1, dC: 0 },
+      { nome: "esquerda", dL: 0, dC: -1 },
+      { nome: "direita", dL: 0, dC: 1 }
 
     ];
+
+    const vizinhosPasso = [];
 
 
     // ========================================
     // ANALISA OS VIZINHOS
     // ========================================
 
-    for (
-      const [deltaLinha, deltaColuna]
-      of movimentos
-    ) {
+    for (const mov of movimentos) {
 
       const novaLinha =
-        noAtual.linha + deltaLinha;
+        noAtual.linha + mov.dL;
 
       const novaColuna =
-        noAtual.coluna + deltaColuna;
+        noAtual.coluna + mov.dC;
 
 
       // ======================================
@@ -197,6 +221,15 @@ function aEstrela(mapa, origem, destino, heuristica) {
         novaColuna < 0 ||
         novaColuna >= mapa.largura
       ) {
+
+        if (gravarHistorico) {
+          vizinhosPasso.push({
+            direcao: mov.nome,
+            posicao: [novaLinha, novaColuna],
+            status: "fora_limites",
+            motivo: "Fora dos limites do mapa"
+          });
+        }
 
         continue;
 
@@ -218,6 +251,16 @@ function aEstrela(mapa, origem, destino, heuristica) {
       if (
         celula.tipo === "barreira"
       ) {
+
+        if (gravarHistorico) {
+          vizinhosPasso.push({
+            direcao: mov.nome,
+            posicao: [novaLinha, novaColuna],
+            terreno: "barreira",
+            status: "barreira",
+            motivo: "Intransponível (Barreira)"
+          });
+        }
 
         continue;
 
@@ -249,6 +292,21 @@ function aEstrela(mapa, origem, destino, heuristica) {
         custoAnterior !== undefined &&
         novoCusto >= custoAnterior
       ) {
+
+        if (gravarHistorico) {
+          const hViz = heuristica([novaLinha, novaColuna], destino);
+          vizinhosPasso.push({
+            direcao: mov.nome,
+            posicao: [novaLinha, novaColuna],
+            terreno: celula.tipo,
+            custoTerreno: celula.custo,
+            g: novoCusto,
+            h: hViz,
+            f: novoCusto + hViz,
+            status: "ignorado_custo",
+            motivo: `Caminho já conhecido é melhor ou igual (g=${custoAnterior})`
+          });
+        }
 
         continue;
 
@@ -305,6 +363,40 @@ function aEstrela(mapa, origem, destino, heuristica) {
 
       abertos.push(novoNo);
 
+      if (gravarHistorico) {
+        vizinhosPasso.push({
+          direcao: mov.nome,
+          posicao: [novaLinha, novaColuna],
+          terreno: celula.tipo,
+          custoTerreno: celula.custo,
+          g: novoCusto,
+          h: novoH,
+          f: novoNo.f,
+          status: "adicionado",
+          motivo: `f = g (${novoCusto}) + h (${novoH}) = ${novoNo.f} - Adicionado à fronteira`
+        });
+      }
+
+    }
+
+    if (gravarHistorico) {
+      historico.push({
+        passo: historico.length + 1,
+        tipo: "expandir",
+        noAtual: {
+          linha: noAtual.linha,
+          coluna: noAtual.coluna,
+          terreno: mapa.matriz[noAtual.linha][noAtual.coluna].tipo,
+          custo: mapa.matriz[noAtual.linha][noAtual.coluna].custo,
+          g: noAtual.custo,
+          h: noAtual.heuristica,
+          f: noAtual.f
+        },
+        motivoEscolha: `Menor f = g + h (${noAtual.custo} + ${noAtual.heuristica} = ${noAtual.f})`,
+        abertos: abertos.map(n => [n.linha, n.coluna]),
+        fechados: Array.from(fechados).map(k => k.split(",").map(Number)),
+        vizinhos: vizinhosPasso
+      });
     }
 
   }
@@ -322,7 +414,9 @@ function aEstrela(mapa, origem, destino, heuristica) {
 
     distancia: Infinity,
 
-    nosExplorados
+    nosExplorados,
+
+    ...(gravarHistorico ? { historico } : {})
 
   };
 
