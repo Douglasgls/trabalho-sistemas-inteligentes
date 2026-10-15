@@ -9,7 +9,7 @@ import No from '../js/no';
 // BUSCA GULOSA
 // ==========================================
 
-function buscaGulosa(mapa, origem, destino, heuristica) {
+function buscaGulosa(mapa, origem, destino, heuristica, gravarHistorico = false) {
 
   // ========================================
   // LISTA DE NÓS A SEREM EXPLORADOS
@@ -30,6 +30,9 @@ function buscaGulosa(mapa, origem, destino, heuristica) {
   // ========================================
 
   let nosExplorados = 0;
+
+  // Histórico passo a passo (caso solicitado para visualização e logs)
+  const historico = [];
 
 
   // ========================================
@@ -127,6 +130,25 @@ function buscaGulosa(mapa, origem, destino, heuristica) {
       const caminho =
         noAtual.obterCaminho();
 
+      if (gravarHistorico) {
+        historico.push({
+          passo: historico.length + 1,
+          tipo: "destino_encontrado",
+          noAtual: {
+            linha: noAtual.linha,
+            coluna: noAtual.coluna,
+            terreno: mapa.matriz[noAtual.linha][noAtual.coluna].tipo,
+            custo: mapa.matriz[noAtual.linha][noAtual.coluna].custo,
+            g: noAtual.custo,
+            h: noAtual.heuristica,
+            f: noAtual.heuristica
+          },
+          motivoEscolha: `Destino [${destino[0]}, ${destino[1]}] alcançado!`,
+          abertos: abertos.map(n => [n.linha, n.coluna]),
+          fechados: Array.from(fechados).map(k => k.split(",").map(Number)),
+          vizinhos: []
+        });
+      }
 
       return {
 
@@ -136,7 +158,9 @@ function buscaGulosa(mapa, origem, destino, heuristica) {
 
         distancia: caminho.length - 1,
 
-        nosExplorados
+        nosExplorados,
+
+        ...(gravarHistorico ? { historico } : {})
 
       };
 
@@ -149,25 +173,27 @@ function buscaGulosa(mapa, origem, destino, heuristica) {
 
     const movimentos = [
 
-      [-1, 0], // cima
-      [1, 0],  // baixo
-      [0, -1], // esquerda
-      [0, 1]   // direita
+      { nome: "cima", dL: -1, dC: 0 },
+      { nome: "baixo", dL: 1, dC: 0 },
+      { nome: "esquerda", dL: 0, dC: -1 },
+      { nome: "direita", dL: 0, dC: 1 }
 
     ];
+
+    const vizinhosPasso = [];
 
 
     // ======================================
     // ANALISA OS VIZINHOS
     // ======================================
 
-    for (const [deltaLinha, deltaColuna] of movimentos) {
+    for (const mov of movimentos) {
 
       const novaLinha =
-        noAtual.linha + deltaLinha;
+        noAtual.linha + mov.dL;
 
       const novaColuna =
-        noAtual.coluna + deltaColuna;
+        noAtual.coluna + mov.dC;
 
 
       // --------------------------------------
@@ -180,6 +206,15 @@ function buscaGulosa(mapa, origem, destino, heuristica) {
         novaColuna < 0 ||
         novaColuna >= mapa.largura
       ) {
+
+        if (gravarHistorico) {
+          vizinhosPasso.push({
+            direcao: mov.nome,
+            posicao: [novaLinha, novaColuna],
+            status: "fora_limites",
+            motivo: "Fora dos limites do mapa"
+          });
+        }
 
         continue;
 
@@ -200,6 +235,16 @@ function buscaGulosa(mapa, origem, destino, heuristica) {
 
       if (celula.tipo === "barreira") {
 
+        if (gravarHistorico) {
+          vizinhosPasso.push({
+            direcao: mov.nome,
+            posicao: [novaLinha, novaColuna],
+            terreno: "barreira",
+            status: "barreira",
+            motivo: "Intransponível (Barreira)"
+          });
+        }
+
         continue;
 
       }
@@ -214,6 +259,21 @@ function buscaGulosa(mapa, origem, destino, heuristica) {
 
 
       if (fechados.has(chaveVizinho)) {
+
+        if (gravarHistorico) {
+          const hViz = heuristica([novaLinha, novaColuna], destino);
+          vizinhosPasso.push({
+            direcao: mov.nome,
+            posicao: [novaLinha, novaColuna],
+            terreno: celula.tipo,
+            custoTerreno: celula.custo,
+            g: noAtual.custo + celula.custo,
+            h: hViz,
+            f: hViz,
+            status: "ja_explorado",
+            motivo: "Já foi visitado/fechado anteriormente"
+          });
+        }
 
         continue;
 
@@ -272,6 +332,40 @@ function buscaGulosa(mapa, origem, destino, heuristica) {
 
       abertos.push(novoNo);
 
+      if (gravarHistorico) {
+        vizinhosPasso.push({
+          direcao: mov.nome,
+          posicao: [novaLinha, novaColuna],
+          terreno: celula.tipo,
+          custoTerreno: celula.custo,
+          g: novoCusto,
+          h: novoH,
+          f: novoH,
+          status: "adicionado",
+          motivo: `h = ${novoH} (custo g=${novoCusto} ignorado) - Adicionado à fronteira`
+        });
+      }
+
+    }
+
+    if (gravarHistorico) {
+      historico.push({
+        passo: historico.length + 1,
+        tipo: "expandir",
+        noAtual: {
+          linha: noAtual.linha,
+          coluna: noAtual.coluna,
+          terreno: mapa.matriz[noAtual.linha][noAtual.coluna].tipo,
+          custo: mapa.matriz[noAtual.linha][noAtual.coluna].custo,
+          g: noAtual.custo,
+          h: noAtual.heuristica,
+          f: noAtual.heuristica
+        },
+        motivoEscolha: `Menor heurística h = ${noAtual.heuristica} (custo acumulado g=${noAtual.custo} é ignorado)`,
+        abertos: abertos.map(n => [n.linha, n.coluna]),
+        fechados: Array.from(fechados).map(k => k.split(",").map(Number)),
+        vizinhos: vizinhosPasso
+      });
     }
 
   }
@@ -289,7 +383,9 @@ function buscaGulosa(mapa, origem, destino, heuristica) {
 
     distancia: Infinity,
 
-    nosExplorados
+    nosExplorados,
+
+    ...(gravarHistorico ? { historico } : {})
 
   };
 

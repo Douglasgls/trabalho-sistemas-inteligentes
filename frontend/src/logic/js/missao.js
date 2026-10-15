@@ -12,11 +12,13 @@ const missoesNivel1 = [
   {
     id: 1,
     nome: "Missão 01",
-    descricao: "Pegue o Motor no Estoque A e entregue no Setor de Montagem.",
+    descricao: "Pegue o Motor no canto superior esquerdo e entregue na Saída (Setor de Montagem).",
 
     carga: "Motor",
 
-    origem: [0, 0],
+    origem: [4, 5],
+
+    peca: [0, 0],
 
     destino: [9, 9]
   }
@@ -33,11 +35,13 @@ const missoesNivel2 = [
   {
     id: 1,
     nome: "Missão 01",
-    descricao: "Pegue a Placa Eletrônica no Estoque B e entregue no Setor de Montagem.",
+    descricao: "Pegue a Placa Eletrônica no canto superior esquerdo e entregue na Saída (Setor de Montagem).",
 
     carga: "Placa Eletrônica",
 
-    origem: [0, 0],
+    origem: [9, 9],
+
+    peca: [0, 0],
 
     destino: [19, 19]
   }
@@ -54,11 +58,13 @@ const missoesNivel3 = [
   {
     id: 1,
     nome: "Missão 01",
-    descricao: "Pegue a Ferramenta no Estoque C e entregue no Setor de Produção.",
+    descricao: "Pegue a Ferramenta no canto superior esquerdo e entregue na Saída (Setor de Produção).",
 
     carga: "Ferramenta",
 
-    origem: [0, 0],
+    origem: [9, 10],
+
+    peca: [0, 0],
 
     destino: [19, 19]
   }
@@ -140,11 +146,17 @@ function imprimirMissao(missao) {
   console.log(`Carga: ${missao.carga}`);
 
   console.log(
-    `Origem: [${missao.origem[0]}, ${missao.origem[1]}]`
+    `Origem: [${missao.origem[0]}, ${missao.origem[1]}] (Centro do mapa)`
   );
 
+  if (missao.peca) {
+    console.log(
+      `Peça a coletar: [${missao.peca[0]}, ${missao.peca[1]}] (Topo do mapa)`
+    );
+  }
+
   console.log(
-    `Destino: [${missao.destino[0]}, ${missao.destino[1]}]`
+    `Saída (Destino): [${missao.destino[0]}, ${missao.destino[1]}] (Ativa apenas após pegar a peça)`
   );
 
   console.log("==========================================\n");
@@ -155,7 +167,7 @@ function imprimirMissao(missao) {
 // EXPORTAÇÕES
 // ==========================================
 
-export {
+export { 
 
   obterMissoes,
 
@@ -163,4 +175,4 @@ export {
 
   imprimirMissao
 
-};
+ };

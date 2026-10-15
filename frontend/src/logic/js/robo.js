@@ -20,6 +20,9 @@ class Robo {
 
     // Quantidade de movimentos realizados
     this.movimentos = 0;
+
+    // Estado da peça (para ativar a saída)
+    this.temPeca = false;
   }
 
 
@@ -34,6 +37,15 @@ class Robo {
       this.coluna
     ];
 
+  }
+
+
+  // ==========================================
+  // COLETA A PEÇA
+  // ==========================================
+
+  coletarPeca() {
+    this.temPeca = true;
   }
 
 
@@ -91,16 +103,25 @@ class Robo {
 
 
   // ==========================================
-  // VERIFICA SE O ROBÔ ESTÁ NO DESTINO
+  // VERIFICA SE O ROBÔ ESTÁ NO DESTINO COM A PEÇA
   // ==========================================
 
-  chegouAoDestino(destino) {
+  chegouAoDestino(destino, precisaPeca = true) {
 
-    return (
+    const estaNaPosicao = (
       this.linha === destino[0] &&
       this.coluna === destino[1]
     );
 
+    if (!estaNaPosicao) {
+      return false;
+    }
+
+    if (precisaPeca) {
+      return this.temPeca;
+    }
+
+    return true;
   }
 
 
@@ -120,6 +141,8 @@ class Robo {
     this.custoTotal = 0;
 
     this.movimentos = 0;
+
+    this.temPeca = false;
 
   }
 

@@ -309,13 +309,29 @@ function imprimirMapa(mapa, missao, robo = null) {
 
       }
 
-      // Destino
+      // Destino / Saída
       else if (
         i === missao.destino[0] &&
         j === missao.destino[1]
       ) {
 
-        linhaStr += " D ";
+        if (robo && robo.temPeca) {
+          linhaStr += " D "; // Saída ativa
+        } else {
+          linhaStr += " X "; // Saída bloqueada
+        }
+
+      }
+
+      // Peça (apenas se ainda não coletada)
+      else if (
+        missao.peca &&
+        (!robo || !robo.temPeca) &&
+        i === missao.peca[0] &&
+        j === missao.peca[1]
+      ) {
+
+        linhaStr += " P ";
 
       }
 
@@ -349,14 +365,16 @@ function imprimirMapa(mapa, missao, robo = null) {
 
   console.log("\nLegenda:");
   console.log("R = Robô");
-  console.log("D = Destino");
+  console.log("P = Peça a coletar (no topo)");
+  console.log("X = Saída Bloqueada (colete a peça primeiro)");
+  console.log("D = Saída Liberada!");
   console.log(". = Estrada (custo 1)");
   console.log("T = Terra (custo 3)");
   console.log("L = Lama (custo 5)");
   console.log("█ = Barreira");
 }
 
-export {
+export { 
   Celula,
   TERRENOS,
   CUSTOS,
@@ -365,4 +383,4 @@ export {
   imprimirMapa,
   converterParaCoordenada,
   mapas
-};
+ };
