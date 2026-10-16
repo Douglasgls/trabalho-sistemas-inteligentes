@@ -288,7 +288,7 @@ function obterMapa(nivel) {
 
 // IMPRIME O MAPA NO TERMINAL
 
-function imprimirMapa(mapa, missao, robo = null) {
+function imprimirMapa(mapa, missao, robo = null, rastroDica = []) {
 
   console.log(`\nMAPA ${mapa.altura} × ${mapa.largura}\n`);
 
@@ -335,6 +335,16 @@ function imprimirMapa(mapa, missao, robo = null) {
 
       }
 
+      // Rastro de Dica da IA
+      else if (
+        rastroDica &&
+        rastroDica.some(p => p[0] === i && p[1] === j)
+      ) {
+
+        linhaStr += " ✦ ";
+
+      }
+
       else {
 
         const tipo = mapa.matriz[i][j].tipo;
@@ -368,6 +378,9 @@ function imprimirMapa(mapa, missao, robo = null) {
   console.log("P = Peça a coletar (no topo)");
   console.log("X = Saída Bloqueada (colete a peça primeiro)");
   console.log("D = Saída Liberada!");
+  if (rastroDica && rastroDica.length > 0) {
+    console.log("✦ = Rastro da Dica da IA (próximos passos)");
+  }
   console.log(". = Estrada (custo 1)");
   console.log("T = Terra (custo 3)");
   console.log("L = Lama (custo 5)");

@@ -18,7 +18,9 @@ import {
   Compass, 
   Eye,
   FastForward,
-  Home
+  Home,
+  Lightbulb,
+  Sparkles
 } from 'lucide-react';
 import StartScreen from './components/StartScreen';
 import { obterMapa } from './logic/js/mapa';
@@ -73,6 +75,12 @@ function App() {
   const [aiResults, setAiResults] = useState([]);
   const [floatingTexts, setFloatingTexts] = useState([]);
 
+  // Tactical AI Hint System (3 hints per mission)
+  const [dicasRestantes, setDicasRestantes] = useState(3);
+  const [dicasUsadas, setDicasUsadas] = useState(0);
+  const [rastroDica, setRastroDica] = useState([]);
+  const [dicaCardInfo, setDicaCardInfo] = useState(null);
+
   // AI Step-by-Step Visualization State
   const [selectedAlgIndex, setSelectedAlgIndex] = useState(null);
   const [activeStepIndex, setActiveStepIndex] = useState(0);
@@ -101,6 +109,10 @@ function App() {
     setIsPlaying(false);
     setShowFinalPath(false);
     setFloatingTexts([]);
+    setDicasRestantes(3);
+    setDicasUsadas(0);
+    setRastroDica([]);
+    setDicaCardInfo(null);
   }, [missaoNum]);
 
   // Re-initialize Game in the current level
@@ -123,6 +135,10 @@ function App() {
     setIsPlaying(false);
     setShowFinalPath(false);
     setFloatingTexts([]);
+    setDicasRestantes(3);
+    setDicasUsadas(0);
+    setRastroDica([]);
+    setDicaCardInfo(null);
   }, [nivel, missaoNum]);
 
   useEffect(() => {
@@ -130,6 +146,75 @@ function App() {
       initGame();
     }
   }, [nivel, missaoNum]);
+
+  // Request AI Hint (Tactical Support during mission)
+  const pedirDica = useCallback(() => {
+    if (gameStatus !== 'playing' || !robo || !mapa || !missao) return;
+    
+    if (dicasRestantes <= 0) {
+      const warnId = Date.now() + Math.random();
+      setFloatingTexts(prev => [
+        ...prev,
+        { id: warnId, text: 'Sem dicas restantes!', linha: robo.linha, coluna: robo.coluna, isWarning: true }
+      ]);
+      setTimeout(() => {
+        setFloatingTexts(prev => prev.filter(f => f.id !== warnId));
+      }, 1500);
+      return;
+    }
+
+    const alvo = (!robo.temPeca && missao.peca) ? missao.peca : missao.destino;
+    const nomeAlvo = (!robo.temPeca && missao.peca) ? 'Peça / Carga' : 'Saída Liberada';
+
+    // Roda busca A* com heurística de Manhattan a partir da posição atual do robô
+    const res = aEstrela(mapa, [robo.linha, robo.coluna], alvo, heuristicaForte);
+
+    if (!res || !res.caminho || res.caminho.length <= 1) {
+      const warnId = Date.now() + Math.random();
+      setFloatingTexts(prev => [
+        ...prev,
+        { id: warnId, text: 'Sem rota viável!', linha: robo.linha, coluna: robo.coluna, isWarning: true }
+      ]);
+      setTimeout(() => {
+        setFloatingTexts(prev => prev.filter(f => f.id !== warnId));
+      }, 1500);
+      return;
+    }
+
+    // Pega os próximos 3 a 5 passos recomendados (ex: 4 passos)
+    const passos = res.caminho.slice(1, 5);
+    setRastroDica(passos);
+    setDicasRestantes(prev => prev - 1);
+    setDicasUsadas(prev => prev + 1);
+
+    const prox = passos[0];
+    let direcaoSugerida = '';
+    if (prox[0] < robo.linha) direcaoSugerida = 'Cima';
+    else if (prox[0] > robo.linha) direcaoSugerida = 'Baixo';
+    else if (prox[1] < robo.coluna) direcaoSugerida = 'Esquerda';
+    else if (prox[1] > robo.coluna) direcaoSugerida = 'Direita';
+
+    const celulaProx = mapa.matriz[prox[0]][prox[1]];
+
+    setDicaCardInfo({
+      alvoNome: nomeAlvo,
+      alvoCoord: alvo,
+      direcao: direcaoSugerida,
+      passosTotal: passos.length,
+      proxCusto: celulaProx.custo,
+      proxTerreno: celulaProx.tipo,
+      custoEstimadoTotal: res.custo
+    });
+
+    const dicaId = Date.now() + Math.random();
+    setFloatingTexts(prev => [
+      ...prev,
+      { id: dicaId, text: `💡 Rota IA: Siga ${direcaoSugerida}!`, linha: robo.linha, coluna: robo.coluna, isSpecial: true }
+    ]);
+    setTimeout(() => {
+      setFloatingTexts(prev => prev.filter(f => f.id !== dicaId));
+    }, 2000);
+  }, [gameStatus, robo, mapa, missao, dicasRestantes]);
 
   // Handle Player Movement
   const moverRobo = useCallback((direcao) => {
@@ -148,10 +233,24 @@ function App() {
         setFloatingTexts(prev => prev.filter(f => f.id !== id));
       }, 1000);
 
+      // Atualiza ou consome o rastro da dica se o jogador seguiu a rota recomendada
+      setRastroDica(prev => {
+        if (prev && prev.length > 0) {
+          if (prev[0][0] === robo.linha && prev[0][1] === robo.coluna) {
+            return prev.slice(1);
+          } else {
+            return []; // Saiu do caminho da dica
+          }
+        }
+        return prev;
+      });
+
       // Coleta da peça se alcançar a coordenada
       if (missao.peca && !robo.temPeca && robo.linha === missao.peca[0] && robo.coluna === missao.peca[1]) {
         robo.coletarPeca();
         setTemPeca(true);
+        setRastroDica([]); // Limpa o rastro anterior já que o objetivo agora é a saída
+        setDicaCardInfo(null);
         const specialId = Date.now() + Math.random();
         setFloatingTexts(prev => [
           ...prev,
@@ -177,11 +276,12 @@ function App() {
       // Verifica se chegou ao destino liberado
       if (robo.chegouAoDestino(missao.destino)) {
         setGameStatus('finished');
+        setRastroDica([]);
       }
     }
   }, [gameStatus, movimento, robo, missao, mapa]);
 
-  // Keyboard controls
+  // Keyboard controls (WASD movement + H for hint)
   useEffect(() => {
     const handleKeyDown = (e) => {
       switch(e.key.toLowerCase()) {
@@ -189,12 +289,13 @@ function App() {
         case 'a': moverRobo('esquerda'); break;
         case 's': moverRobo('baixo'); break;
         case 'd': moverRobo('direita'); break;
+        case 'h': pedirDica(); break;
         default: break;
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [moverRobo]);
+  }, [moverRobo, pedirDica]);
 
   // Run AI Analysis with Full History Recording
   const runAIAnalysis = () => {
@@ -385,6 +486,62 @@ function App() {
                 <span>Custo do Jogador</span>
                 <span className="stat-value">{stats.custo}</span>
               </div>
+              <div className="stat-item">
+                <span>Dicas Usadas</span>
+                <span className="stat-value" style={{color: dicasUsadas > 0 ? '#fbbf24' : '#34d399'}}>
+                  {dicasUsadas} / 3
+                </span>
+              </div>
+            </div>
+
+            {/* AI Tactical Hint System */}
+            <div className="hint-panel">
+              <div className="hint-header">
+                <div style={{display: 'flex', alignItems: 'center', gap: '0.45rem'}}>
+                  <Lightbulb size={18} color="#fbbf24" />
+                  <span style={{fontWeight: 'bold', fontSize: '0.88rem', color: '#fef3c7'}}>Consultoria Tática IA</span>
+                </div>
+                <div className="hint-charges">
+                  {[1, 2, 3].map(slot => (
+                    <div 
+                      key={slot} 
+                      className={`hint-charge-slot ${slot <= dicasRestantes ? 'available' : 'used'}`}
+                      title={slot <= dicasRestantes ? 'Dica disponível' : 'Dica consumida'}
+                    >
+                      <Sparkles size={12} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {gameStatus === 'playing' && (
+                <button 
+                  className={`btn-hint ${dicasRestantes === 0 ? 'disabled' : ''}`}
+                  onClick={pedirDica}
+                  disabled={dicasRestantes === 0}
+                  title="Calcula e projeta os próximos passos com A* (Atalho: H)"
+                >
+                  <div style={{display: 'flex', alignItems: 'center', gap: '0.45rem'}}>
+                    <Lightbulb size={16} /> 
+                    <span>{dicasRestantes > 0 ? `Projetar Rota (${dicasRestantes}/3)` : 'Dicas Esgotadas'}</span>
+                  </div>
+                  <kbd className="kbd-shortcut">H</kbd>
+                </button>
+              )}
+
+              {dicaCardInfo && gameStatus === 'playing' && (
+                <div className="hint-card-info">
+                  <div className="hint-card-target">
+                    🎯 Alvo: <strong>{dicaCardInfo.alvoNome}</strong>
+                  </div>
+                  <div className="hint-card-body">
+                    Siga para <strong style={{color: '#38bdf8'}}>{dicaCardInfo.direcao}</strong> pelo terreno <strong>{dicaCardInfo.proxTerreno}</strong> (custo: {dicaCardInfo.proxCusto}).
+                  </div>
+                  <div className="hint-card-steps">
+                    ✦ {dicaCardInfo.passosTotal} passos projetados com A* (Manhattan)
+                  </div>
+                </div>
+              )}
             </div>
 
             {gameStatus === 'playing' && (
@@ -435,6 +592,10 @@ function App() {
 
             <div style={{width: '100%', borderTop: '1px solid rgba(255,255,255,0.1)', margin: '0.25rem 0'}}></div>
 
+            <div className="legend-item" title="Próximos passos recomendados pela consultoria da IA">
+              <div className="cell-mini" style={{background: 'rgba(251, 191, 36, 0.45)', border: '1.5px dashed #fbbf24'}}></div>
+              <span>Dica IA (✦)</span>
+            </div>
             <div className="legend-item" title="Posições na fila de prioridade aguardando expansão">
               <div className="cell-mini" style={{background: 'rgba(234, 179, 8, 0.5)', border: '1.5px solid #eab308'}}></div>
               <span>Fronteira</span>
@@ -482,6 +643,8 @@ function App() {
                 const isFinal = finalPath.some(p => p[0] === i && p[1] === j);
                 const isFrontier = currentStep && currentStep.abertos.some(p => p[0] === i && p[1] === j);
                 const isExplored = currentStep && currentStep.fechados.some(p => p[0] === i && p[1] === j);
+                const hintIndex = (gameStatus === 'playing' && rastroDica) ? rastroDica.findIndex(p => p[0] === i && p[1] === j) : -1;
+                const isHintTrail = hintIndex !== -1;
 
                 let cellStateClass = '';
                 if (isCurrent) {
@@ -492,6 +655,8 @@ function App() {
                   cellStateClass = 'cell-frontier';
                 } else if (isExplored) {
                   cellStateClass = 'cell-explored';
+                } else if (isHintTrail) {
+                  cellStateClass = 'cell-hint-trail';
                 }
 
                 return (
@@ -530,6 +695,20 @@ function App() {
                 </div>
               )}
             </div>
+
+            {/* AI Hint Trail Beacons Layer (Glows above fog) */}
+            {gameStatus === 'playing' && rastroDica && rastroDica.map((step, idx) => (
+              <div 
+                key={`hint-beacon-${step[0]}-${step[1]}-${idx}`} 
+                className="hint-beacon-layer" 
+                style={{ transform: `translate(${step[1] * 54}px, ${step[0] * 54}px)` }}
+                title={`Dica da IA - Próximo Passo ${idx + 1}: [${step[0]}, ${step[1]}]`}
+              >
+                <div className="hint-beacon-circle">
+                  <span className="hint-beacon-number">{idx + 1}</span>
+                </div>
+              </div>
+            ))}
 
             {/* Robot Layer */}
             <div className="robot-layer" style={{ transform: `translate(${robo.coluna * 54}px, ${robo.linha * 54}px)` }}>
@@ -699,12 +878,18 @@ function App() {
                     <td>
                       <strong style={{color: '#38bdf8'}}>Você (Jogador)</strong>
                       <br/><span style={{fontSize:'0.8rem', color:'var(--text-secondary)'}}>Origem → Peça → Saída</span>
+                      <br/>
+                      <span className={`badge ${dicasUsadas === 0 ? 'badge-best' : 'badge-neutral'}`} style={{marginLeft: 0, marginTop: '5px'}}>
+                        {dicasUsadas === 0 ? '🏆 100% Autônomo (0 dicas)' : `💡 ${dicasUsadas}/3 dicas usadas`}
+                      </span>
                     </td>
                     <td>{stats.distancia}</td>
                     <ValueCell value={stats.custo} min={minCost} max={maxCost} />
                     <td style={{color: 'var(--text-secondary)'}}>-</td>
                     <td style={{color: 'var(--text-secondary)'}}>-</td>
-                    <td style={{color: 'var(--text-secondary)', fontSize: '0.8rem'}}>Controle Manual</td>
+                    <td style={{color: 'var(--text-secondary)', fontSize: '0.8rem'}}>
+                      {dicasUsadas > 0 ? `Apoio Tático (${dicasUsadas}x)` : 'Sem Auxílio da IA'}
+                    </td>
                   </tr>
 
                   {aiResults.map((res, idx) => {

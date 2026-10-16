@@ -110,6 +110,18 @@ export default function StartScreen({ onStart }) {
             <ChevronRight size={22} />
           </button>
         </div>
+
+        <div className="start-keyboard-hint" style={{ marginTop: '1rem', justifyContent: 'center', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem' }}>
+          <span>Controles:</span>
+          <span className="key-cap">W</span>
+          <span className="key-cap">A</span>
+          <span className="key-cap">S</span>
+          <span className="key-cap">D</span>
+          <span>Mover</span>
+          <span style={{ margin: '0 0.3rem', opacity: 0.4 }}>|</span>
+          <span className="key-cap" style={{ borderColor: '#fbbf24', color: '#fbbf24' }}>H</span>
+          <span style={{ color: '#fbbf24', fontWeight: 600 }}>Dica da IA (3x)</span>
+        </div>
       </div>
     </div>
   );

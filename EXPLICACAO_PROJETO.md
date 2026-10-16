@@ -6,9 +6,10 @@
 
 ## 1. O projeto em uma frase
 
-> Um robô nasce no **centro do mapa** e precisa coletar uma peça/carga no **topo do mapa** para só então liberar a **saída (destino)**. Primeiro **o jogador** cumpre a missão manualmente com W/A/S/D; depois **a IA** resolve o mesmo desafio em duas etapas (Origem → Peça → Saída) com **Busca Gulosa** e **A\***, usando **duas heurísticas diferentes**, e o programa compara os resultados de forma justa.
+> Um robô nasce no **centro do mapa** e precisa coletar uma peça/carga no **topo do mapa** para só então liberar a **saída (destino)**. Durante a missão, **a IA funciona como um recurso estratégico**: o jogador dispõe de um limite de **3 dicas táticas por missão** (tecla H ou botão na interface) que projetam os próximos 3 a 5 passos ótimos calculados em tempo real pelo A* (com Manhattan) até o próximo objetivo, auxiliando nas decisões sem jogar pelo usuário. Ao final, **a IA** resolve o mesmo desafio em duas etapas (Origem → Peça → Saída) com **Busca Gulosa** e **A\***, comparando custos, distâncias e o grau de autonomia do jogador.
 
 O objetivo didático é mostrar:
+- **A IA como recurso estratégico em tempo real**: ajuda na tomada de decisão sem retirar o protagonismo do jogador.
 - A diferença entre uma busca **rápida mas "míope"** (Gulosa) e uma busca **ótima** (A\*).
 - O conceito de **planejamento em múltiplos estágios / sub-objetivos (waypoints)** em IA.
 - Como a **qualidade da heurística** muda a quantidade de trabalho (nós explorados).

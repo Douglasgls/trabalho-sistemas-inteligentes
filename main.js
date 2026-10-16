@@ -312,7 +312,11 @@ function executarBuscas(
 // MOSTRA RESULTADO DO JOGADOR
 // ==========================================
 
-function mostrarResultadoJogador(robo) {
+// ==========================================
+// MOSTRA RESULTADO DO JOGADOR
+// ==========================================
+
+function mostrarResultadoJogador(robo, dicasUsadas = 0) {
 
   const estatisticas =
     robo.obterEstatisticas();
@@ -334,6 +338,10 @@ function mostrarResultadoJogador(robo) {
 
   console.log(
     `Custo: ${estatisticas.custo}`
+  );
+
+  console.log(
+    `Dicas da IA utilizadas: ${dicasUsadas} / 3`
   );
 
 
@@ -390,6 +398,11 @@ function jogarNivel(nivel, finalizarNivel) {
       robo
     );
 
+  // Sistema de 3 Dicas por missão
+  let dicasRestantes = 3;
+  let dicasUsadas = 0;
+  let rastroAtual = [];
+
 
   // ========================================
   // MOSTRA MISSÃO
@@ -418,6 +431,7 @@ function jogarNivel(nivel, finalizarNivel) {
   console.log("A = esquerda");
   console.log("S = baixo");
   console.log("D = direita");
+  console.log("H = pedir dica da IA (3 restantes)");
   console.log("Q = sair");
 
 
@@ -428,7 +442,7 @@ function jogarNivel(nivel, finalizarNivel) {
   function jogar() {
 
     rl.question(
-      "\nDigite W/A/S/D: ",
+      `\nDigite W/A/S/D ou H para dica [Dicas: ${dicasRestantes}/3]: `,
       (tecla) => {
 
         tecla =
@@ -454,6 +468,60 @@ function jogarNivel(nivel, finalizarNivel) {
 
 
         // ==================================
+        // PEDIR DICA DA IA (H)
+        // ==================================
+
+        if (tecla.toLowerCase() === "h") {
+          if (dicasRestantes <= 0) {
+            console.log("\n❌ [IA TÁTICA] Você já utilizou todas as 3 dicas permitidas nesta missão!");
+            jogar();
+            return;
+          }
+
+          dicasRestantes--;
+          dicasUsadas++;
+
+          const alvo = (!robo.temPeca && missao.peca) ? missao.peca : missao.destino;
+          const nomeAlvo = (!robo.temPeca && missao.peca) ? "Peça / Carga [P]" : "Saída Liberada [D]";
+
+          const res = aEstrela(mapa, [robo.linha, robo.coluna], alvo, heuristicaForte);
+
+          if (!res || !res.caminho || res.caminho.length <= 1) {
+            console.log("\n⚠️ [IA TÁTICA] Nenhum caminho viável até o objetivo foi encontrado.");
+          } else {
+            // Próximos 3 a 5 passos (pegamos até 4 passos à frente)
+            rastroAtual = res.caminho.slice(1, 5);
+
+            const prox = rastroAtual[0];
+            let direcaoSugerida = "";
+            if (prox[0] < robo.linha) direcaoSugerida = "CIMA (W)";
+            else if (prox[0] > robo.linha) direcaoSugerida = "BAIXO (S)";
+            else if (prox[1] < robo.coluna) direcaoSugerida = "ESQUERDA (A)";
+            else if (prox[1] > robo.coluna) direcaoSugerida = "DIREITA (D)";
+
+            const celulaProx = mapa.matriz[prox[0]][prox[1]];
+
+            console.log("\n========================================================");
+            console.log(`💡 [IA TÁTICA CONSULTADA] - Dicas restantes: ${dicasRestantes}/3`);
+            console.log(`🎯 Alvo atual: ${nomeAlvo} em [${alvo[0]}, ${alvo[1]}]`);
+            console.log(`👉 Próxima direção recomendada: ${direcaoSugerida}`);
+            console.log(`🌱 Terreno do próximo passo: ${celulaProx.tipo} (custo: ${celulaProx.custo})`);
+            console.log(`🛣️ Rastro luminoso da IA (próximos passos calculados pelo A*):`);
+            rastroAtual.forEach((p, idx) => {
+              const c = mapa.matriz[p[0]][p[1]];
+              console.log(`   Passo ${idx + 1}: [${p[0]}, ${p[1]}] - ${c.tipo} (custo ${c.custo})`);
+            });
+            console.log("========================================================");
+
+            imprimirMapa(mapa, missao, robo, rastroAtual);
+          }
+
+          jogar();
+          return;
+        }
+
+
+        // ==================================
         // CONVERTE TECLA
         // ==================================
 
@@ -464,7 +532,7 @@ function jogarNivel(nivel, finalizarNivel) {
         if (!direcao) {
 
           console.log(
-            "\nTecla inválida. Use W, A, S ou D."
+            "\nTecla inválida. Use W, A, S, D ou H para pedir dica."
           );
 
           jogar();
@@ -492,6 +560,15 @@ function jogarNivel(nivel, finalizarNivel) {
 
         if (resultado.sucesso) {
 
+          // Atualiza rastro se o jogador seguiu a rota recomendada
+          if (rastroAtual.length > 0) {
+            if (rastroAtual[0][0] === robo.linha && rastroAtual[0][1] === robo.coluna) {
+              rastroAtual.shift();
+            } else {
+              rastroAtual = [];
+            }
+          }
+
           console.log(
             `Terreno: ${resultado.terreno}`
           );
@@ -512,6 +589,7 @@ function jogarNivel(nivel, finalizarNivel) {
             robo.coluna === missao.peca[1]
           ) {
             robo.coletarPeca();
+            rastroAtual = [];
             console.log("\n==========================================");
             console.log(" 📦 PEÇA COLETADA! A SAÍDA FOI LIBERADA!");
             console.log(" Agora vá até a saída [D] para concluir!");
@@ -537,7 +615,8 @@ function jogarNivel(nivel, finalizarNivel) {
         imprimirMapa(
           mapa,
           missao,
-          robo
+          robo,
+          rastroAtual
         );
 
 
@@ -562,7 +641,8 @@ function jogarNivel(nivel, finalizarNivel) {
           // =================================
 
           mostrarResultadoJogador(
-            robo
+            robo,
+            dicasUsadas
           );
 
 
